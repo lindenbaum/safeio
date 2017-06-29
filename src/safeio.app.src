@@ -1,6 +1,6 @@
 {application, safeio,
  [{description, "Stat files/directories without locking up all file IO in case the underlying file system becomes unresponsive... (yes, I am looking at you, NFS)."},
-  {vsn, "0.1.1"},
+  {vsn, "0.1.2"},
   {registered, [safeio_sup]},
   {mod, { safeio_app, []}},
   {applications,
