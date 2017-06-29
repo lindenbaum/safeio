@@ -29,9 +29,8 @@
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Check that `Path` is an accessable path, e.g. a directory to a network
-%% mounted file system, that might be blocked due to network problems.
-%% @see can_state/2
+%% Return true if calling `stat` on `Path` was successful.
+%% @see can_stat/2
 %% @end
 %% ------------------------------------------------------------------------------
 -spec can_stat(file:filename()) -> boolean().
@@ -40,23 +39,19 @@ can_stat(Path) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Check that `Path` is an accessable path, e.g. a directory to a network
-%% mounted file system, that might be blocked due to network problems.
+%% Return true if calling `stat` on `Path` was successful.
 %%
-%% If the `Path` is _safe_ execute the MFA in the calling process.
+%% This function will not cause `file` or `filelib` operations to block, in case
+%% the underlying `stat` operation blocks. This is in contrast to `file` and
+%% `filelib` behaviour, where `filelib:is_regular/1` on a path that is in a
+%% stale NFS mount will cause other `filelib:...` operations on totally
+%% unrelated paths to block, too.
 %%
-%% This function will not clog the file I/O of other `file` or `filelib`
-%% operations in case the underlying `stat` operation blocks.
-%%
-%% For example, if an NFS mount is located at "/mnt/nfs" and a file
-%% "/mnt/nfs/user-provided/a76f7e62" is expected to be a regular file then
-%% `safeio:is_regular("/mnt/nfs", "user-provided/a76f7e62")` will be a safe way
-%% to determine if the file is a regular file and even if the NFS mount is
-%% stale, this function returns after a short timeout.
-%%
-%% Also, subsequent calls to `check` will immediately return `false` if a check
+%% Also, subsequent invocations will immediately return `false` if a check
 %% for `Path`, that was initiated by previous invocation, has not returned yet.
-%% This mechanism works by starting an internal server for each distinct `Path`.
+%%
+%% This mechanism works by starting an internal server for each distinct `Path`,
+%% see {@link info/1}.
 %%
 %% @end
 %% ------------------------------------------------------------------------------
@@ -90,22 +85,9 @@ is_regular(RootDirectory, RelativePath) ->
 %% Check that `RootDirectory++"/"++RelPath` is a re file.
 %% Return `false` if filesystem errors or timeouts were encountered.
 %%
-%% In contrast to {@link filelib:is_regular/1} this function will not
-%% clog the file I/O of other `file` or `filelib` operations in case
-%% the underlying `stat` operation blocks.
+%% The non-functional behaviour regarding safe access to directories is the same
+%% as in {@link can_stat/2}.
 %%
-%% For example, if an NFS mount is located at "/mnt/nfs" and a file
-%% "/mnt/nfs/user-provided/a76f7e62" is expected to be a regular file
-%% then `safeio:is_regular("/mnt/nfs", "user-provided/a76f7e62")`
-%% will be a safe way to determine if the file is a regular file and
-%% even if the NFS mount is stale, this function returns after a short
-%% timeout.
-%%
-%% Also, subsequent calls to the `is regular` will immediately return
-%% `false` if a check for "/mnt/nfs", that was initiated by previous
-%% invokation, has not returned yet.
-%% This mechanism works by starting an internal server for each distinct
-%% `RootDirectory`.
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_regular(file:filename(), file:filename(), timeout()) -> boolean().
