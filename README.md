@@ -1,3 +1,5 @@
+[![Hex version](https://img.shields.io/hexpm/v/safeio.svg "Hex version")](https://hex.pm/packages/safeio)
+
 safeio
 =====
 
