@@ -11,9 +11,9 @@ Our application would regularily use `filelib:is_regular/1` with a path that
 is in an NFS mounted directory.
 
 The problem is, whenever such a mount point gets _stuck_, e.g. because of an
-NFS-server outage or a network problem, **ALL** file operations, i.e. calls to `file` and
-`filelib` modules, block after accessing paths in the stuck directory,
-even if paths are accessed, that arn't in the broken NFS directory.
+NFS-server outage or a network problem, **all** file operations, i.e. calls to `file` and
+`filelib` modules, block from the moment the first path in a _stuck_ directory is accessed.
+Even operations on paths outside the broken mount point are blocked.
 
 This library aims to provide a workaround for this problem by providing operations 
 that check if a path is accessable using an external process instead of `filelib` or `file`.
