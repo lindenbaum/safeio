@@ -1,0 +1,15 @@
+{application, safeio,
+ [{description, "Stat files/directories without locking up all file IO in case the underlying file system becomes unresponsive... (yes, I am looking at you, NFS)."},
+  {vsn, "0.1.1"},
+  {registered, [safeio_sup]},
+  {mod, { safeio_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers, ["Sven Heyll <svh@posteo.de>"]},
+  {licenses, ["Apache 2.0"]},
+  {links, [{"Github", "https://github.com/lindenbaum/safeio"}]}
+ ]}.
