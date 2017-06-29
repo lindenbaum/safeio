@@ -30,8 +30,3 @@ To check if a file is a regular file, use `safeio:is_regular/2`:
     safeio:is_regular("/mnt/nfs-audio", "en/wav-g711a/test.wav"),
     ...
 
-To execute a function, under the condition that a path is available, use
-`with`:
-
-    safeio:with("/mnt/nfs-dir", filelib, is_regular, ["/mnt/nfs-dir/foobar"]),
-    ...
