@@ -82,7 +82,7 @@ is_regular(RootDirectory, RelativePath) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Check that `RootDirectory++"/"++RelPath` is a re file.
+%% Check that `RootDirectory++"/"++RelPath` is a regular file.
 %% Return `false` if filesystem errors or timeouts were encountered.
 %%
 %% The non-functional behaviour regarding safe access to directories is the same
