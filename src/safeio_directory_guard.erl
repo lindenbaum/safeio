@@ -130,7 +130,7 @@ get_filetype(Pid, RelPathIn) ->
 -spec get_filetype(pid(), file:filename(), timeout()) ->
                           safeio:filetype() | {error, term()}.
 get_filetype(Pid, RelPathIn, TimeOutMillis) when is_pid(Pid) ->
-    case filename:safe_relative_path(RelPathIn) of
+    case safe_relative_path(RelPathIn) of
         unsafe ->
             {error, {not_a_relative_path, RelPathIn}};
         RelPath ->
@@ -519,6 +519,22 @@ filetype_to_atom(0) -> regular_file;
 filetype_to_atom(1) -> directory;
 filetype_to_atom(2) -> other_filetype.
 
+%%------------------------------------------------------------------------------
+%% @private
+%%------------------------------------------------------------------------------
+-spec safe_relative_path(file:filename()) -> unsafe | file:filename().
+safe_relative_path(Path) ->
+    case lists:member({safe_relative_path,1}, filename:module_info(exports)) of
+        true ->
+            filename:safe_relative_path(Path);
+        false ->
+            case Path of
+                "/" ++ _ ->
+                    unsafe;
+                _ ->
+                    Path
+            end
+    end.
 
 %%%% {ok, C2} = safeio_directory_guard:start_link("/mnt/audio"), dbg:tracer(), dbg:p(C2, [p,m]), safeio_directory_guard:heart_beat(C2).
 %%%% [spawn(fun() -> safeio_directory_guard:can_stat(C2) end) || _ <- lists:seq(1,100)], safeio_directory_guard:info(C2).
