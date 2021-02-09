@@ -23,9 +23,9 @@
         | directory
         | other_filetype.
 
-%%====================================================================
+%%==============================================================================
 %% API functions
-%%====================================================================
+%%==============================================================================
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -34,8 +34,7 @@
 %% @end
 %% ------------------------------------------------------------------------------
 -spec can_stat(file:filename()) -> boolean().
-can_stat(Path) ->
-    can_stat(Path, 5000).
+can_stat(Path) -> can_stat(Path, 2500).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -60,10 +59,8 @@ can_stat(Path, TimeOutMillis) ->
     case safeio_sup:get_directory_guard(Path) of
         {ok, Port} ->
             case safeio_directory_guard:can_stat(Port, TimeOutMillis) of
-                ok ->
-                    true;
-                _ ->
-                    false
+                ok -> true;
+                _  -> false
             end;
         _ ->
             false
@@ -78,7 +75,7 @@ can_stat(Path, TimeOutMillis) ->
 %%------------------------------------------------------------------------------
 -spec is_regular(file:filename(), file:filename()) -> boolean().
 is_regular(RootDirectory, RelativePath) ->
-    is_regular(RootDirectory, RelativePath, 5000).
+    is_regular(RootDirectory, RelativePath, 2500).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -104,13 +101,14 @@ is_regular(RootDir, RelPath, TimeOut) ->
             false
     end.
 
-
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
 -spec info() -> ok.
 info() ->
-    [safeio_directory_guard:info(G) || G <- safeio_sup:which_directory_guards()].
+    lists:foreach(
+      fun safeio_directory_guard:info/1,
+      safeio_sup:which_directory_guards()).
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -123,8 +121,3 @@ info(RootDir) ->
         _ ->
             ok
     end.
-
-
-%%====================================================================
-%% Internal functions
-%%====================================================================
