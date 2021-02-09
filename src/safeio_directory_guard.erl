@@ -30,6 +30,7 @@
 -include("safeio.hrl").
 
 -define(CHECK_TIMEOUT_MILLIS, 1000).
+-define(CHECK_ALIVE_INTERVAL, 30000).
 
 -type from() :: {pid(), term()}.
 
@@ -40,7 +41,8 @@
                 pending :: [{operation(), from()}],
                 req_start_time :: non_neg_integer() | no_req_start_time,
                 success_count :: integer(),
-                fail_count :: integer()}).
+                fail_count :: integer(),
+                timer :: reference()}).
 
 -define(NO_PENDING_REQUESTS(S), S = #state{pending = []}).
 
@@ -105,7 +107,7 @@ can_stat(Pid, TimeOutMillis) when is_pid(Pid) ->
     try
         gen_server:call(Pid, {can_stat, TimeOutMillis}, TimeOutMillis)
     catch
-        exit:{timeout,_} -> {error, timeout}
+        exit:_ -> {error, timeout}
     end.
 
 %%------------------------------------------------------------------------------
@@ -136,7 +138,7 @@ get_filetype(Pid, RelPathIn, TimeOutMillis) when is_pid(Pid) ->
                                 {{get_filetype, RelPath}, TimeOutMillis},
                                 TimeOutMillis)
             catch
-                exit:{timeout,_} -> {error, timeout}
+                exit:_ -> {error, timeout}
             end
     end.
 
@@ -190,7 +192,8 @@ init([Path]) ->
                 pending = [],
                 req_start_time = no_req_start_time,
                 success_count = 0,
-                fail_count = 0 }}.
+                fail_count = 0,
+                timer = start_check()}}.
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -226,12 +229,22 @@ handle_info(Return = ?return(_, _), State = #state{}) ->
          Return,
          reset_req_start_time(State)))};
 handle_info(?sedge_leave_readloop, State) ->
-    {stop, normal, State}.
+    {stop, normal, State};
+handle_info({timeout, Ref, check}, State = #state{timer = Ref}) ->
+    %% The idea behind this:
+    %% Create a recurring timer, that checks whether the last operation is still
+    %% in progress (which means it is blocked). In this case crash this server,
+    %% which kills the corresponding port process and let it get restarted in
+    %% the supervisor.
+    case is_blocked_for_too_long(State, ?CHECK_ALIVE_INTERVAL) of
+        true  -> {stop, io_blocked, State};
+        false -> {noreply, State#state{timer = start_check()}}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
-terminate(_Reason, State) -> maybe_shutdown(State).
+terminate(Reason, State) -> maybe_shutdown(fail_all(Reason, State)).
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -343,7 +356,7 @@ succeed_pending_can_stat(State = #state{ pending = Ps }) ->
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
--spec fail_all(safeio:ioerror(), #state{}) -> #state{}.
+-spec fail_all(term(), #state{}) -> #state{}.
 fail_all(E, State = #state{ pending = Ps }) ->
     lists:map(
       fun({_,P}) ->
@@ -469,6 +482,11 @@ extract_port_info(Port, Item) ->
 %% @private
 %%------------------------------------------------------------------------------
 now_millis() -> erlang:system_time() div 1000000.
+
+%%------------------------------------------------------------------------------
+%% @private
+%%------------------------------------------------------------------------------
+start_check() -> erlang:start_timer(?CHECK_ALIVE_INTERVAL, self(), check).
 
 %%------------------------------------------------------------------------------
 %% @private
