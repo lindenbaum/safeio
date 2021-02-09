@@ -5,7 +5,6 @@
 
 /* System includes needed by sedge */
 
-#include "erl_interface.h"
 #include "ei.h"
 
 #include <execinfo.h>
@@ -36,8 +35,9 @@ static pthread_mutex_t sedge_trace_file_mutex = PTHREAD_MUTEX_INITIALIZER;
 int sedge_trace_begin() {
   if (sedge_trace_file) {
     if (pthread_mutex_lock(&sedge_trace_file_mutex)) {
-      erl_err_msg("ERROR: sedge_trace_begin(): failed to lock mutex: %s.\n",
-                  strerror(errno));
+      fprintf(stderr,
+              "ERROR: sedge_trace_begin(): failed to lock mutex: %s.\n",
+              strerror(errno));
       return 1;
     }
     return 0;
@@ -52,8 +52,9 @@ void sedge_trace_commit() {
     fflush(sedge_trace_file);
   }
   if (pthread_mutex_unlock(&sedge_trace_file_mutex)) {
-    erl_err_msg("ERROR: sedge_trace_commit(): failed to unlock mutex: %s.\n",
-                strerror(errno));
+    fprintf(stderr,
+            "ERROR: sedge_trace_commit(): failed to unlock mutex: %s.\n",
+            strerror(errno));
   }
 }
 
@@ -74,17 +75,40 @@ void sedge_print_stack_trace () {
     sedge_trace_commit();
   }
 
-  erl_err_msg("\n* STACKTRACE: *");
-  for (i = 1; i < size; i++) erl_err_msg("%s", strings[i]);
-  erl_err_msg("* END OF STACKTRACE *\n");
+  fprintf(stderr, "\n* STACKTRACE: *");
+  for (i = 1; i < size; i++) fprintf(stderr, "%s", strings[i]);
+  fprintf(stderr, "* END OF STACKTRACE *\n");
   free(strings);
  }
 
 /* Port IO Customizable compile time options: */
 
+#ifndef SEDGE_PORT_BUF_SIZE
 #define SEDGE_PORT_BUF_SIZE 65534
+#endif //SEDGE_PORT_BUF_SIZE
+
+#ifndef SEDGE_PORT_PACKET_LENGTH
+#define SEDGE_PORT_PACKET_LENGTH 2
+#endif //SEDGE_PORT_PACKET_LENGTH
+
+#ifndef SEDGE_PORT_FD_INPUT
 #define SEDGE_PORT_FD_INPUT 3
+#endif //SEDGE_PORT_FD_INPUT
+
+#ifndef SEDGE_PORT_FD_OUTPUT
 #define SEDGE_PORT_FD_OUTPUT 4
+#endif //SEDGE_PORT_FD_OUTPUT
+
+#if SEDGE_PORT_PACKET_LENGTH == 4
+#define SEDGE_PL_NTOH ntohl
+#define SEDGE_PL_HTON htonl
+#elif SEDGE_PORT_PACKET_LENGTH == 2
+#define SEDGE_PL_NTOH ntohs
+#define SEDGE_PL_HTON htons
+#elif SEDGE_PORT_PACKET_LENGTH == 1
+#define SEDGE_PL_NTOH
+#define SEDGE_PL_HTON
+#endif // SEDGE_PORT_PACKET_LENGTH
 
 
 /* Port IO globals and constants: */
@@ -106,7 +130,8 @@ void sedge_decode_version(char *buf, int *index) {
   int _Ignored;
   if (0 != ei_decode_version(buf, index, &_Ignored)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_version failed.\n");
+    fprintf(stderr, "ERROR: ei_decode_version failed.\n");
+    exit(1);
   }
 }
 
@@ -118,7 +143,8 @@ char sedge_decode_char(char *buf, int *index) {
     return Result;
   }
   sedge_print_stack_trace();
-  erl_err_quit("ERROR: 'char' expected.\n");
+  fprintf(stderr, "ERROR: 'char' expected.\n");
+  exit(1);
 }
 
 unsigned long sedge_decode_ulong(char *buf, int *index) {
@@ -129,7 +155,8 @@ unsigned long sedge_decode_ulong(char *buf, int *index) {
     return LongRes;
   }
   sedge_print_stack_trace();
-  erl_err_quit("ERROR: 'unsigned long' expected.\n");
+  fprintf(stderr, "ERROR: 'unsigned long' expected.\n");
+  exit(1);
 }
 
 long int sedge_decode_long(char *buf, int *index) {
@@ -140,7 +167,8 @@ long int sedge_decode_long(char *buf, int *index) {
     return LongRes;
   }
   sedge_print_stack_trace();
-  erl_err_quit("ERROR: 'signed long' expected.\n");
+  fprintf(stderr, "ERROR: 'signed long' expected.\n");
+  exit(1);
 }
 
 unsigned long long sedge_decode_ulonglong(char *buf, int *index) {
@@ -151,7 +179,8 @@ unsigned long long sedge_decode_ulonglong(char *buf, int *index) {
     return LongLongRes;
   }
   sedge_print_stack_trace();
-  erl_err_quit("ERROR: 'unsigned long long' expected.\n");
+  fprintf(stderr, "ERROR: 'unsigned long long' expected.\n");
+  exit(1);
 }
 
 long long sedge_decode_longlong(char *buf, int *index) {
@@ -162,7 +191,8 @@ long long sedge_decode_longlong(char *buf, int *index) {
     return LongLongRes;
   }
   sedge_print_stack_trace();
-  erl_err_quit("ERROR: 'signed long long' expected.\n");
+  fprintf(stderr, "ERROR: 'signed long long' expected.\n");
+  exit(1);
 }
 
 uint8_t sedge_decode_uint8_t(char *buf, int *index) {
@@ -205,7 +235,8 @@ int sedge_decode_size(char *buf, int *index) {
   int Type; int Len = 0;
   if (0 != ei_get_type (buf, index, &Type, &Len)) {
     sedge_print_stack_trace ();
-    erl_err_quit ("ERROR: ei_get_type failed.\n");
+    fprintf(stderr, "ERROR: ei_get_type failed.\n");
+    exit(1);
   }
   return Len;
 }
@@ -214,8 +245,8 @@ char *sedge_alloc(size_t Size) {
   char *Result = malloc (Size);
   if ( ! Result) {
     sedge_print_stack_trace ();
-    erl_err_quit ("ERROR: cannot allocate string buffer.\n");
-    return 0;
+    fprintf(stderr, "ERROR: cannot allocate string buffer.\n");
+    exit(1);
   }
   memset (Result, 0, Size);
   return Result;
@@ -232,13 +263,14 @@ char *sedge_decode_string(char *buf, int *index) {
   if (0 == ei_decode_list_header(buf, index, &Arity)) {
     if (Arity != 0) {
       sedge_print_stack_trace();
-      erl_err_quit("ERROR: Decoding of strings as lists not supported.\n");
+      fprintf(stderr, "ERROR: Decoding of strings as lists not supported.\n");
+      exit(1);
     }
     return Result;
   }
   sedge_print_stack_trace ();
-  erl_err_quit ("ERROR: string expected.\n");
-  return 0;
+  fprintf(stderr, "ERROR: string expected.\n");
+  exit(1);
 }
 
 char *sedge_decode_atom(char *buf, int *index) {
@@ -246,8 +278,8 @@ char *sedge_decode_atom(char *buf, int *index) {
   char *Result = sedge_alloc(Size + 1);
   if (0 != ei_decode_atom(buf, index, Result)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_atom failed.");
-    return 0;
+    fprintf(stderr, "ERROR: ei_decode_atom failed.");
+    exit(1);
   }
   return Result;
 }
@@ -257,8 +289,8 @@ void sedge_decode_binary(char *buf, int *index, void **Result, long *ResultLen) 
   *Result = sedge_alloc(*ResultLen);
   if (0 != ei_decode_binary(buf, index, *Result, ResultLen)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_binary failed.\n");
-    return;
+    fprintf(stderr, "ERROR: ei_decode_binary failed.\n");
+    exit(1);
   }
 }
 
@@ -267,12 +299,15 @@ void sedge_decode_tuple_header_raw(char *buf, int *index,
   int Arity = -1;
   if (0 != ei_decode_tuple_header(buf, index, &Arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_tuple_header_raw failed.\n");
+    fprintf(stderr, "ERROR: ei_decode_tuple_header_raw failed.\n");
+    exit(1);
   }
   else if (Arity != ExpectedArity) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_tuple_header_raw failed: Invalid arity: %i. Expected: %i.\n",
-                 Arity, ExpectedArity);
+    fprintf(stderr,
+            "ERROR: ei_decode_tuple_header_raw failed: Invalid arity: %i. Expected: %i.\n",
+            Arity, ExpectedArity);
+    exit(1);
   }
 }
 
@@ -283,23 +318,31 @@ void sedge_decode_tuple_header(char *buf, int *index,
   char Tag[MAXATOMLEN + 1];
   if (0 != ei_decode_tuple_header(buf, index, &Arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_tuple_header failed. Expected struct %s/%i.\n",
-                 ExpectedTag, ExpectedArity);
+    fprintf(stderr,
+            "ERROR: ei_decode_tuple_header failed. Expected struct %s/%i.\n",
+            ExpectedTag, ExpectedArity);
+    exit(1);
   }
   else if (Arity != ExpectedArity + 1) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: Invalid arity: %i. Expected struct type: %s/%i.\n",
-                 Arity, ExpectedTag, ExpectedArity);
+    fprintf(stderr,
+            "ERROR: Invalid arity: %i. Expected struct type: %s/%i.\n",
+            Arity, ExpectedTag, ExpectedArity);
+    exit(1);
   }
   else if (ei_decode_atom(buf, index, Tag)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_atom for tag atom \"%s\" failed. Expected struct %s/%i.\n",
-                 Tag, ExpectedTag, ExpectedArity);
+    fprintf(stderr,
+            "ERROR: ei_decode_atom for tag atom \"%s\" failed. Expected struct %s/%i.\n",
+            Tag, ExpectedTag, ExpectedArity);
+    exit(1);
   }
   else if (strncmp(Tag, ExpectedTag, MAXATOMLEN)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: Invalid tag: %s. Expected struct: %s/%i.\n",
-                 Tag, ExpectedTag, ExpectedArity);
+    fprintf(stderr,
+            "ERROR: Invalid tag: %s. Expected struct: %s/%i.\n",
+            Tag, ExpectedTag, ExpectedArity);
+    exit(1);
   }
 }
 
@@ -307,7 +350,8 @@ int sedge_decode_list_header(char *buf, int *index) {
   int Arity = -1;
   if (0 != ei_decode_list_header(buf, index, &Arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_list_header failed.\n");
+    fprintf(stderr, "ERROR: ei_decode_list_header failed.\n");
+    exit(1);
   }
   return Arity;
 }
@@ -316,13 +360,13 @@ void sedge_decode_empty_list(char *buf, int *index) {
   int Arity = -1;
   if (0 != ei_decode_list_header(buf, index, &Arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_decode_list_header failed.\n");
-    return;
+    fprintf(stderr, "ERROR: ei_decode_list_header failed.\n");
+    exit(1);
   }
   if (Arity != 0) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: expected empty list, actual arity: %i.\n", Arity);
-    return;
+    fprintf(stderr, "ERROR: expected empty list, actual arity: %i.\n", Arity);
+    exit(1);
   }
 }
 
@@ -331,125 +375,143 @@ void sedge_decode_empty_list(char *buf, int *index) {
 void sedge_encode_version(char *buf, int *index) {
   if (0 != ei_encode_version(buf, index)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_version failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_version failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_tuple_header(char *buf, int *index, int arity) {
   if (0 != ei_encode_tuple_header(buf, index, arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_tuple_header failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_tuple_header failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_list_header(char *buf, int *index, int arity) {
   if (0 != ei_encode_list_header(buf, index, arity)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_list_header failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_list_header failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_binary(char *buf, int *index, const void *p, long len) {
   if (0 != ei_encode_binary(buf, index, p, len)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_binary failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_binary failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_empty_list(char *buf, int *index) {
   if (0 != ei_encode_empty_list(buf, index)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_empty_list failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_empty_list failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_atom(char *buf, int *index, const char *p) {
   if (0 != ei_encode_atom(buf, index, p)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_atom failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_atom failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_string(char *buf, int *index, const char *str) {
   if (0 != ei_encode_string(buf, index, str)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_string failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_string failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_uint8_t(char *buf, int *index, uint8_t i) {
   if (0 != ei_encode_char(buf, index, (char)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_char (from uint8_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_char (from uint8_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_int8_t(char *buf, int *index, int8_t i) {
   if (0 != ei_encode_char(buf, index, (char)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_char (from int8_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_char (from int8_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_uint16_t(char *buf, int *index, uint16_t i) {
   if (0 != ei_encode_ulong(buf, index, (unsigned long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_ulong (from uint16_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_ulong (from uint16_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_int16_t(char *buf, int *index, int16_t i) {
   if (0 != ei_encode_long(buf, index, (long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_long (from int16_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_long (from int16_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_uint32_t(char *buf, int *index, uint32_t i) {
   if (0 != ei_encode_ulong(buf, index, (unsigned long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_ulong (from uint32_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_ulong (from uint32_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_int32_t(char *buf, int *index, int32_t i) {
   if (0 != ei_encode_long(buf, index, (long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_long (from int32_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_long (from int32_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_uint64_t(char *buf, int *index, uint64_t i) {
   if (0 != ei_encode_ulonglong(buf, index, (unsigned long long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_ulong (from uint64_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_ulong (from uint64_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_int64_t(char *buf, int *index, int64_t i) {
   if (0 != ei_encode_longlong(buf, index, (long long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_longlong (from int64_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_longlong (from int64_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_unsigned(char *buf, int *index, uint64_t i) {
   if (0 != ei_encode_ulonglong(buf, index, (unsigned long long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_ulong (from uint64_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_ulong (from uint64_t) failed.\n");
+    exit(1);
   }
 }
 
 void sedge_encode_signed(char *buf, int *index, int64_t i) {
   if (0 != ei_encode_longlong(buf, index, (long long)i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_longlong (from int64_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_longlong (from int64_t) failed.\n");
+    exit(1);
   }
 }
 void sedge_encode_size_t(char *buf, int *index, size_t i) {
   if (0 != ei_encode_ulong(buf, index, i)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: ei_encode_ulong (from size_t) failed.\n");
+    fprintf(stderr, "ERROR: ei_encode_ulong (from size_t) failed.\n");
+    exit(1);
   }
 }
 
@@ -507,27 +569,36 @@ int sedge_port_write_exact(char *buf, size_t len)
  */
 int sedge_port_read(char *buf, size_t *size)
 {
+#if SEDGE_PORT_PACKET_LENGTH == 4
+  uint32_t payload_size;
+#elif SEDGE_PORT_PACKET_LENGTH == 2
   uint16_t payload_size;
-  if (sedge_port_read_exact((char*)&payload_size, 2)) {
+#elif SEDGE_PORT_PACKET_LENGTH == 1
+  uint8_t payload_size;
+#endif // SEDGE_PORT_PACKET_LENGTH
+
+  if (sedge_port_read_exact((char*)&payload_size, SEDGE_PORT_PACKET_LENGTH)) {
     sedge_print_stack_trace();
-    erl_err_msg("sedge_port_read: Failed to read the next payload size.\n");
+    fprintf(stderr, "sedge_port_read: Failed to read the next payload size.\n");
     return 1;
   }
 
-  payload_size = ntohs(payload_size);
+  payload_size = SEDGE_PL_NTOH(payload_size);
 
   if (payload_size >= SEDGE_PORT_BUF_SIZE) {
     sedge_print_stack_trace();
-    erl_err_msg("read_binary: Buffersize exceeded. Requested: %i. "
-                "Available per compile time define SEDGE_PORT_BUF_SIZE: %i.\n",
-                payload_size, SEDGE_PORT_BUF_SIZE);
+    fprintf(stderr,
+            "read_binary: Buffersize exceeded. Requested: %i. "
+            "Available per compile time define SEDGE_PORT_BUF_SIZE: %i.\n",
+            payload_size, SEDGE_PORT_BUF_SIZE);
     return 1;
   }
 
   if (sedge_port_read_exact(buf, payload_size)) {
     sedge_print_stack_trace();
-    erl_err_msg("read_binary: Failed to read %i bytes.\n",
-                payload_size);
+    fprintf(stderr,
+            "read_binary: Failed to read %i bytes.\n",
+            payload_size);
     return 1;
   }
 
@@ -544,23 +615,31 @@ int sedge_port_read(char *buf, size_t *size)
 int sedge_port_write(char *buf, size_t size)
 {
   // write the size
+#if SEDGE_PORT_PACKET_LENGTH == 4
+  uint32_t payload_size = (uint32_t)size;
+#elif SEDGE_PORT_PACKET_LENGTH == 2
   uint16_t payload_size = (uint16_t)size;
-  payload_size = htons(payload_size);
-  if (sedge_port_write_exact((char*)&payload_size, 2)) {
+#elif SEDGE_PORT_PACKET_LENGTH == 1
+  uint8_t payload_size = (uint8_t)size;
+#endif // SEDGE_PORT_PACKET_LENGTH
+  payload_size = SEDGE_PL_HTON(payload_size);
+  if (sedge_port_write_exact((char*)&payload_size, SEDGE_PORT_PACKET_LENGTH)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: write_binary: Failed to "
-                 "write the size of the next payload to send: %i.\n",
-                 ntohs(payload_size));
-    return 1;
+    fprintf(stderr,
+            "ERROR: write_binary: Failed to "
+            "write the size of the next payload to send: %i.\n",
+            SEDGE_PL_NTOH(payload_size));
+    exit(1);
   }
 
   // write the payload
   if (sedge_port_write_exact(buf, size)) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: write_binary: Failed to write "
-                 "the actual payload, with a length of: %i.\n",
-                 ntohs(payload_size));
-    return 1;
+    fprintf(stderr,
+            "ERROR: write_binary: Failed to write "
+            "the actual payload, with a length of: %i.\n",
+            SEDGE_PL_NTOH(payload_size));
+    exit(1);
   }
 
   return 0;
@@ -571,16 +650,19 @@ int sedge_port_write(char *buf, size_t size)
 void
 sedge_port_write_begin() {
   if (pthread_mutex_lock(&sedge_port_write_mutex)) {
-    erl_err_quit("ERROR: sedge_write_lock: failed to lock mutex: %s.\n",
-                 strerror(errno));
+    fprintf(stderr,
+            "ERROR: sedge_write_lock: failed to lock mutex: %s.\n",
+            strerror(errno));
+    exit(1);
   }
   if (sedge_port_write_index != 0) {
     sedge_print_stack_trace();
-    erl_err_quit("ERROR: sedge_write_begin(): Inconsistent state detected: "
-                 "sedge_port_write_index must be 0 at the begining of a "
-                 "write operation, instead it was: %i.\n",
-                 sedge_port_write_index);
-    return;
+    fprintf(stderr,
+            "ERROR: sedge_write_begin(): Inconsistent state detected: "
+            "sedge_port_write_index must be 0 at the begining of a "
+            "write operation, instead it was: %i.\n",
+            sedge_port_write_index);
+    exit(1);
   }
   sedge_encode_version(sedge_port_write_buffer, &sedge_port_write_index);
 }
@@ -603,8 +685,10 @@ sedge_port_write_commit() {
   sedge_port_write(sedge_port_write_buffer, sedge_port_write_index);
   sedge_port_write_index = 0;
   if (pthread_mutex_unlock(&sedge_port_write_mutex)) {
-    erl_err_quit("ERROR: sedge_write_lock: failed to unlock mutex: %s.\n",
-                 strerror(errno));
+    fprintf(stderr,
+            "ERROR: sedge_write_lock: failed to unlock mutex: %s.\n",
+            strerror(errno));
+    return;
   }
 }
 
@@ -734,6 +818,8 @@ typedef struct sedge_cmd_info {
 /** The command simply returns with SEDGE_MAGIC_EXIT so that the main loop will be left.
   */
 int sedge_cmd_quit(char *buf, int index) {
+  (void) buf;
+  (void) index;
   if (!sedge_trace_begin()) {
     fprintf(sedge_trace_file, "\n\n*** Leaving Main Loop ***\n");
     sedge_trace_commit();
@@ -781,8 +867,9 @@ int sedge_cmd_trace(char *buf, int index) {
   FILE *NewTraceFile = NULL;
 
   if (pthread_mutex_lock(&sedge_trace_file_mutex)) {
-    erl_err_msg("sedge_cmd_trace(): failed to lock mutex: %s.\n",
-                strerror(errno));
+    fprintf(stderr,
+            "sedge_cmd_trace(): failed to lock mutex: %s.\n",
+            strerror(errno));
     return 1;
   }
 
@@ -807,8 +894,9 @@ int sedge_cmd_trace(char *buf, int index) {
   }
   free(FileName);
   if (pthread_mutex_unlock(&sedge_trace_file_mutex)) {
-    erl_err_msg("sedge_cmd_trace(): failed to unlock mutex: %s.\n",
-                strerror(errno));
+    fprintf(stderr,
+            "sedge_cmd_trace(): failed to unlock mutex: %s.\n",
+            strerror(errno));
     return 1;
   }
   return 0;
@@ -886,7 +974,7 @@ int sedge_handle_next_request() {
 
   if(sedge_port_read (buf, &size)) {
     sedge_print_stack_trace ();
-    erl_err_msg ("sedge_handle_next_request: Failed to read payload.\n");
+    fprintf(stderr, "sedge_handle_next_request: Failed to read payload.\n");
     return 1;
   }
 
@@ -901,8 +989,10 @@ int sedge_handle_next_request() {
 
   if (CmdId > sedge_cmd_id_max) {
     sedge_print_stack_trace ();
-    erl_err_quit ("ERROR: sedge_handle_next_request: Invalid cmd_id: %zi. "
-                  "Permitted range: 0 - %zi.\n", CmdId, sedge_cmd_id_max);
+    fprintf(stderr,
+            "ERROR: sedge_handle_next_request: Invalid cmd_id: %zi. "
+            "Permitted range: 0 - %zi.\n", CmdId, sedge_cmd_id_max);
+    exit(1);
   }
   Cmd = sedge_cmd_table [CmdId];
 
@@ -922,8 +1012,10 @@ int sedge_handle_next_request() {
 
   if (CmdError && CmdError != SEDGE_MAGIC_EXIT) {
     sedge_print_stack_trace ();
-    erl_err_quit ("ERROR: sedge_handle_next_request: cmd: %s "
-                  "returned non-zero: %i.\n", Cmd.funname, CmdError);
+    fprintf(stderr,
+            "ERROR: sedge_handle_next_request: cmd: %s "
+            "returned non-zero: %i.\n", Cmd.funname, CmdError);
+    exit(1);
   }
   return CmdError;
 }
