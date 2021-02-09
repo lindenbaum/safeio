@@ -54,8 +54,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link(string()) -> {ok, pid()} | {error, term()}.
-start_link(Path) ->
-    gen_server:start_link(?MODULE, [Path], []).
+start_link(Path) -> gen_server:start_link(?MODULE, [Path], []).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -94,8 +93,7 @@ info(Pid) when is_pid(Pid) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec can_stat(pid()) -> ok | {error, term()}.
-can_stat(Pid) ->
-    can_stat(Pid, ?CHECK_TIMEOUT_MILLIS).
+can_stat(Pid) -> can_stat(Pid, ?CHECK_TIMEOUT_MILLIS).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -104,11 +102,10 @@ can_stat(Pid) ->
 %%------------------------------------------------------------------------------
 -spec can_stat(pid(), timeout()) -> ok | {error, term()}.
 can_stat(Pid, TimeOutMillis) when is_pid(Pid) ->
-    try gen_server:call(Pid, {can_stat, TimeOutMillis}, TimeOutMillis) of
-        R -> R
+    try
+        gen_server:call(Pid, {can_stat, TimeOutMillis}, TimeOutMillis)
     catch
-        exit:{timeout,_} ->
-            {error, timeout}
+        exit:{timeout,_} -> {error, timeout}
     end.
 
 %%------------------------------------------------------------------------------
@@ -134,11 +131,12 @@ get_filetype(Pid, RelPathIn, TimeOutMillis) when is_pid(Pid) ->
         unsafe ->
             {error, {not_a_relative_path, RelPathIn}};
         RelPath ->
-            try gen_server:call(Pid, {{get_filetype, RelPath}, TimeOutMillis},
+            try
+                gen_server:call(Pid,
+                                {{get_filetype, RelPath}, TimeOutMillis},
                                 TimeOutMillis)
             catch
-                exit:{timeout,_} ->
-                    {error, timeout}
+                exit:{timeout,_} -> {error, timeout}
             end
     end.
 
@@ -200,11 +198,9 @@ init([Path]) ->
 handle_call(info, _From, State) ->
     {reply, State, State};
 handle_call({Op, TimeOutMillis}, From, State) ->
-    Blocked = is_blocked_for_too_long(State, TimeOutMillis),
-    if Blocked ->
-            {reply, {error, timeout}, add_fail_count(1, State)};
-       true ->
-            {noreply, enque_and_execute(Op, From, State)}
+    case is_blocked_for_too_long(State, TimeOutMillis) of
+        true  -> {reply, {error, timeout}, add_fail_count(1, State)};
+        false -> {noreply, enque_and_execute(Op, From, State)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -219,8 +215,7 @@ handle_cast({cast_to_port, Cmd}, State) ->
 handle_info({Port, {data, Data}}, State = #state{port = Port}) ->
     handle_info(binary_to_term(Data), State);
 handle_info({Port, {exit_status, Status}}, State = #state{port = Port}) ->
-    State2 = State#state{port = no_port},
-    {stop, {port_exited, Status}, State2};
+    {stop, {port_exited, Status}, State#state{port = no_port}};
 handle_info(?event(Payload), State) ->
     handle_port_event(Payload),
     {noreply, State};
@@ -229,8 +224,7 @@ handle_info(Return = ?return(_, _), State = #state{}) ->
      if_idle_execute_next_pending(
        handle_port_return(
          Return,
-         reset_req_start_time(State)))
-    };
+         reset_req_start_time(State)))};
 handle_info(?sedge_leave_readloop, State) ->
     {stop, normal, State}.
 
@@ -294,8 +288,7 @@ op_to_cmd(can_stat, State) ->
 %% @private
 %%------------------------------------------------------------------------------
 -spec set_req_start_time(#state{}) -> #state{}.
-set_req_start_time(State) ->
-    State#state{req_start_time = now_millis()}.
+set_req_start_time(State) -> State#state{req_start_time = now_millis()}.
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -434,22 +427,31 @@ cast_to_port_impl(State = #state{port = Port}, Term) ->
 %%------------------------------------------------------------------------------
 maybe_shutdown(#state{port = no_port}) ->
     ok;
-maybe_shutdown(State) ->
-    shutdown_loop(cast_to_port_impl(State, ?sedge_leave_readloop)).
+maybe_shutdown(#state{port = Port}) ->
+    try erlang:port_info(Port, os_pid) of
+        {os_pid, Process} ->
+            Cmd = io_lib:format("kill -s KILL ~w", [Process]),
+            os:cmd(lists:flatten(Cmd)),
+            shutdown_loop(Port);
+        _ ->
+            ok
+    catch
+        _:_ -> ok
+    end.
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
-shutdown_loop(State = #state{port = Port}) ->
+shutdown_loop(Port) ->
     receive
         {Port, {exit_status, _}} ->
             ok;
         {Port, closed} ->
-            shutdown_loop(State);
-        {'EXIT', _Port, _NotNormal} ->
-            shutdown_loop(State);
+            shutdown_loop(Port);
+        {'EXIT', _Port, _Reason} ->
+            shutdown_loop(Port);
         {Port, {data, _Data}} ->
-            shutdown_loop(State)
+            shutdown_loop(Port)
     after 10000 ->
             ok
     end.
@@ -466,8 +468,7 @@ extract_port_info(Port, Item) ->
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
-now_millis() ->
-    erlang:system_time() div 1000000.
+now_millis() -> erlang:system_time() div 1000000.
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -479,8 +480,7 @@ start_port() ->
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
-get_cmd() ->
-    string:join([valgrind(), exe()], " ").
+get_cmd() -> string:join([valgrind(), exe()], " ").
 
 %%------------------------------------------------------------------------------
 %% @private
