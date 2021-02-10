@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }
+{ pkgs ? import (fetchTarball https://github.com/NixOS/nixpkgs/archive/nixos-20.09-small.tar.gz) { }
 , run ? "bash"
 }:
 (pkgs.buildFHSUserEnv {
