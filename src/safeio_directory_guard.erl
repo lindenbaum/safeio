@@ -113,7 +113,7 @@ can_stat(Pid, TimeOutMillis) when is_pid(Pid) ->
 %%------------------------------------------------------------------------------
 %% @doc
 %% Get the filetype of a path relative to the directory passed in to
-%% `start_link`.
+%% `start_link'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_filetype(pid(), file:filename()) ->

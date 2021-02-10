@@ -29,7 +29,7 @@
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Return true if calling `stat` on `Path` was successful.
+%% Return true if calling `stat' on `Path' was successful.
 %% @see can_stat/2
 %% @end
 %% ------------------------------------------------------------------------------
@@ -38,18 +38,18 @@ can_stat(Path) -> can_stat(Path, 2500).
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Return true if calling `stat` on `Path` was successful.
+%% Return true if calling `stat' on `Path' was successful.
 %%
-%% This function will not cause `file` or `filelib` operations to block, in case
-%% the underlying `stat` operation blocks. This is in contrast to `file` and
-%% `filelib` behaviour, where `filelib:is_regular/1` on a path that is in a
-%% stale NFS mount will cause other `filelib:...` operations on totally
+%% This function will not cause `file' or `filelib' operations to block, in case
+%% the underlying `stat' operation blocks. This is in contrast to `file' and
+%% `filelib' behaviour, where `filelib:is_regular/1' on a path that is in a
+%% stale NFS mount will cause other `filelib:...' operations on totally
 %% unrelated paths to block, too.
 %%
-%% Also, subsequent invocations will immediately return `false` if a check
-%% for `Path`, that was initiated by previous invocation, has not returned yet.
+%% Also, subsequent invocations will immediately return `false' if a check
+%% for `Path', that was initiated by previous invocation, has not returned yet.
 %%
-%% This mechanism works by starting an internal server for each distinct `Path`,
+%% This mechanism works by starting an internal server for each distinct `Path',
 %% see {@link info/1}.
 %%
 %% @end
@@ -68,8 +68,8 @@ can_stat(Path, TimeOutMillis) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Check that `RootDirectory++"/"++RelativePath` is a regular file.
-%% Return `false` if filesystem errors or timeouts were encountered.
+%% Check that `RootDirectory++"/"++RelativePath' is a regular file.
+%% Return `false' if filesystem errors or timeouts were encountered.
 %% @see is_regular/3
 %% @end
 %%------------------------------------------------------------------------------
@@ -79,8 +79,8 @@ is_regular(RootDirectory, RelativePath) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
-%% Check that `RootDirectory++"/"++RelPath` is a regular file.
-%% Return `false` if filesystem errors or timeouts were encountered.
+%% Check that `RootDirectory++"/"++RelPath' is a regular file.
+%% Return `false' if filesystem errors or timeouts were encountered.
 %%
 %% The non-functional behaviour regarding safe access to directories is the same
 %% as in {@link can_stat/2}.
