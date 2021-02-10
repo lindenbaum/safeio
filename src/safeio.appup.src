@@ -1,0 +1,9 @@
+{"0.1.4",
+ [
+  {"0.1.3", [{restart_application, safeio}]},
+  {"0.1.2", [{restart_application, safeio}]}
+ ],
+ [
+  {"0.1.3", [{restart_application, safeio}]},
+  {"0.1.2", [{restart_application, safeio}]}
+ ]}.
