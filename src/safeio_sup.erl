@@ -62,7 +62,7 @@ which_directory_guards() ->
 %% @private
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 %%------------------------------------------------------------------------------
-init([]) -> {ok, {{one_for_one, 1, 5}, []}}.
+init([]) -> {ok, {{one_for_one, 1000, 1}, []}}.
 
 %%==============================================================================
 %% Internal functions
