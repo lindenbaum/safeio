@@ -1,7 +1,7 @@
 {application, safeio,
  [
   {description, "Check for stale (NFS) files/directories without locking up all file IO."},
-  {vsn, "0.1.5"},
+  {vsn, "0.1.6"},
   {registered, [safeio_sup]},
   {applications, [kernel, stdlib, sasl]},
   {mod, {safeio_app, []}},

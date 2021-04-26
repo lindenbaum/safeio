@@ -4,7 +4,7 @@ SAFEIO_CFLAGS := -Wno-unused-parameter
 
 CFLAGS := -W -Wall -g $(SAFEIO_CFLAGS) -I $(ERL_TOP)/usr/include/
 LDFLAGS := -rdynamic -L$(ERL_TOP)/usr/lib/
-LDLIBS := -lei -lerl_interface
+LDLIBS := -lei
 
 .PHONY: all
 all: safeio_port
