@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:23
+    steps:
+      - uses: actions/checkout@v2
+      - name: Compile
+        run: rebar3 compile
+      - name: Run dialyzer
+        run: rebar3 dialyzer
+      - name: Run tests
+        run: rebar3 as test eunit
