@@ -539,20 +539,36 @@ filetype_to_atom(2) -> other_filetype.
 
 %%------------------------------------------------------------------------------
 %% @private
+%% This function is borrowed from the OTP filename module.
 %%------------------------------------------------------------------------------
 -spec safe_relative_path(file:filename()) -> unsafe | file:filename().
 safe_relative_path(Path) ->
-    case lists:member({safe_relative_path,1}, filename:module_info(exports)) of
-        true ->
-            filename:safe_relative_path(Path);
-        false ->
-            case Path of
-                "/" ++ _ ->
-                    unsafe;
-                _ ->
-                    Path
-            end
+    case filename:pathtype(Path) of
+        relative ->
+            Cs0 = filename:split(Path),
+            safe_relative_path_1(Cs0, []);
+        _ ->
+            unsafe
     end.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% This function is borrowed from the OTP filename module.
+%%------------------------------------------------------------------------------
+safe_relative_path_1(["." | T], Acc)      -> safe_relative_path_1(T, Acc);
+safe_relative_path_1([<<".">> | T], Acc)  -> safe_relative_path_1(T, Acc);
+safe_relative_path_1([".." | T], Acc)     -> climb(T, Acc);
+safe_relative_path_1([<<"..">> | T], Acc) -> climb(T, Acc);
+safe_relative_path_1([H | T], Acc)        -> safe_relative_path_1(T, [H | Acc]);
+safe_relative_path_1([], [])              -> [];
+safe_relative_path_1([], Acc)             -> filename:join(lists:reverse(Acc)).
+
+%%------------------------------------------------------------------------------
+%% @private
+%% This function is borrowed from the OTP filename module.
+%%------------------------------------------------------------------------------
+climb(_, [])        -> unsafe;
+climb(T, [_ | Acc]) -> safe_relative_path_1(T, Acc).
 
 %%%% {ok, C2} = safeio_directory_guard:start_link("/mnt/audio"), dbg:tracer(), dbg:p(C2, [p,m]), safeio_directory_guard:heart_beat(C2).
 %%%% [spawn(fun() -> safeio_directory_guard:can_stat(C2) end) || _ <- lists:seq(1,100)], safeio_directory_guard:info(C2).
