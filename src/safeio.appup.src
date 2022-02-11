@@ -1,4 +1,4 @@
-{"0.1.7",
+{"0.2.0",
  [
   {"0.1.6", [{restart_application, safeio}]},
   {"0.1.5", [{restart_application, safeio}]},
