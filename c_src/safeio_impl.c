@@ -970,7 +970,6 @@ int sedge_handle_next_request() {
   size_t CmdId = 0;
   sedge_cmd_info Cmd;
   int CmdError = 0;
-  const size_t sedge_cmd_id_max = (sizeof (sedge_cmd_table) / sizeof (sedge_cmd_fun));
 
   if(sedge_port_read (buf, &size)) {
     sedge_print_stack_trace ();
@@ -987,13 +986,6 @@ int sedge_handle_next_request() {
   sedge_decode_tuple_header_raw (buf, &index, 2);
   CmdId = sedge_decode_uint16_t (buf, &index);
 
-  if (CmdId > sedge_cmd_id_max) {
-    sedge_print_stack_trace ();
-    fprintf(stderr,
-            "ERROR: sedge_handle_next_request: Invalid cmd_id: %zi. "
-            "Permitted range: 0 - %zi.\n", CmdId, sedge_cmd_id_max);
-    exit(1);
-  }
   Cmd = sedge_cmd_table [CmdId];
 
   /* Trace the incoming command */
