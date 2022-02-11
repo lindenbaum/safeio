@@ -1,12 +1,12 @@
-{application, safeio,
- [
-  {description, "Check for stale (NFS) files/directories without locking up all file IO."},
-  {vsn, "0.1.7"},
-  {registered, [safeio_sup]},
-  {applications, [kernel, stdlib, sasl]},
-  {mod, {safeio_app, []}},
-  {env,[]},
-  {maintainers, ["Sven Heyll <svh@posteo.de>"]},
-  {licenses, ["Apache 2.0"]},
-  {links, [{"Github", "https://github.com/lindenbaum/safeio"}]}
- ]}.
+{application, safeio, [
+    {description,
+        "Check for stale (NFS) files/directories without locking up all file IO."},
+    {vsn, "0.1.7"},
+    {registered, [safeio_sup]},
+    {applications, [kernel, stdlib, sasl]},
+    {mod, {safeio_app, []}},
+    {env, []},
+    {maintainers, ["Sven Heyll <svh@posteo.de>"]},
+    {licenses, ["Apache 2.0"]},
+    {links, [{"Github", "https://github.com/lindenbaum/safeio"}]}
+]}.

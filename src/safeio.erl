@@ -1,27 +1,28 @@
 -module(safeio).
 
 %% API exports
--export([can_stat/1,
-         can_stat/2,
-         is_regular/2,
-         is_regular/3,
-         info/0,
-         info/1
-        ]).
+-export([
+    can_stat/1,
+    can_stat/2,
+    is_regular/2,
+    is_regular/3,
+    info/0,
+    info/1
+]).
 
 -export_type([ioerror/0, filetype/0]).
 
 -type ioerror() ::
-          permission_denied
-        | io_error
-        | not_found
-        | bad_path
-        | other_error.
+    permission_denied
+    | io_error
+    | not_found
+    | bad_path
+    | other_error.
 
 -type filetype() ::
-          regular_file
-        | directory
-        | other_filetype.
+    regular_file
+    | directory
+    | other_filetype.
 
 %%==============================================================================
 %% API functions
@@ -60,7 +61,7 @@ can_stat(Path, TimeOutMillis) ->
         {ok, Port} ->
             case safeio_directory_guard:can_stat(Port, TimeOutMillis) of
                 ok -> true;
-                _  -> false
+                _ -> false
             end;
         _ ->
             false
@@ -92,10 +93,8 @@ is_regular(RootDir, RelPath, TimeOut) ->
     case safeio_sup:get_directory_guard(RootDir) of
         {ok, Port} ->
             case safeio_directory_guard:get_filetype(Port, RelPath, TimeOut) of
-                regular_file ->
-                    true;
-                _ ->
-                    false
+                regular_file -> true;
+                _ -> false
             end;
         _ ->
             false
@@ -107,8 +106,9 @@ is_regular(RootDir, RelPath, TimeOut) ->
 -spec info() -> ok.
 info() ->
     lists:foreach(
-      fun safeio_directory_guard:info/1,
-      safeio_sup:which_directory_guards()).
+        fun safeio_directory_guard:info/1,
+        safeio_sup:which_directory_guards()
+    ).
 
 %%------------------------------------------------------------------------------
 %% @private

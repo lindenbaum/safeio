@@ -47,40 +47,48 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -define(return_can_stat_ok,
-  ?return(can_stat, ok)).
+    ?return(can_stat, ok)
+).
 
 -define(return_get_filetype_ok(ARg0),
-  ?return(get_filetype, {ok, ARg0})).
+    ?return(get_filetype, {ok, ARg0})
+).
 
 -define(return_can_stat_error(ARg0),
-  ?return(can_stat, {error, ARg0})).
+    ?return(can_stat, {error, ARg0})
+).
 
 -define(return_get_filetype_error(ARg0),
-  ?return(get_filetype, {error, ARg0})).
+    ?return(get_filetype, {error, ARg0})
+).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% API Commands
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -define(can_stat(Path),
-  ?command(3, {Path})).
+    ?command(3, {Path})
+).
 
 -define(get_filetype(Path),
-  ?command(4, {Path})).
-
+    ?command(4, {Path})
+).
 
 -ifdef(sedge_include_funs).
 
--export([can_stat/2,
-         get_filetype/2]).
+-export([
+    can_stat/2,
+    get_filetype/2
+]).
 
 can_stat(SedgePid, Path) ->
-  SedgePid ! ?can_stat(Path).
+    SedgePid ! ?can_stat(Path).
 
 get_filetype(SedgePid, Path) ->
-  SedgePid ! ?get_filetype(Path).
+    SedgePid ! ?get_filetype(Path).
 
--endif. %% sedge_include_funs.
+%% sedge_include_funs.
+-endif.
 
 %%% End of headerfile
 -endif.

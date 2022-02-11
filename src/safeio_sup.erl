@@ -3,9 +3,11 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0,
-        get_directory_guard/1,
-        which_directory_guards/0]).
+-export([
+    start_link/0,
+    get_directory_guard/1,
+    which_directory_guards/0
+]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -72,9 +74,5 @@ init([]) -> {ok, {{one_for_one, 1000, 1}, []}}.
 %% @private
 %%------------------------------------------------------------------------------
 childspec(Path) ->
-    {Path,
-     {safeio_directory_guard, start_link, [Path]},
-     transient,
-     1000,
-     worker,
-     [safeio_directory_guard]}.
+    {Path, {safeio_directory_guard, start_link, [Path]}, transient, 1000,
+        worker, [safeio_directory_guard]}.

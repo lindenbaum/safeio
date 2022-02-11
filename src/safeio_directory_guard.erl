@@ -9,23 +9,27 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,
-         can_stat/1,
-         can_stat/2,
-         get_filetype/2,
-         get_filetype/3,
-         info/1,
-         trace_on/2,
-         trace_off/1,
-         heart_beat/1]).
+-export([
+    start_link/1,
+    can_stat/1,
+    can_stat/2,
+    get_filetype/2,
+    get_filetype/3,
+    info/1,
+    trace_on/2,
+    trace_off/1,
+    heart_beat/1
+]).
 
 %% gen_server callbacks
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
+]).
 
 -include("safeio.hrl").
 
@@ -36,13 +40,15 @@
 
 -type operation() :: can_stat | {get_filetype, file:filename()}.
 
--record(state, {port :: port() | no_port,
-                path :: string(),
-                pending :: [{operation(), from()}],
-                req_start_time :: non_neg_integer() | no_req_start_time,
-                success_count :: integer(),
-                fail_count :: integer(),
-                timer :: reference()}).
+-record(state, {
+    port :: port() | no_port,
+    path :: string(),
+    pending :: [{operation(), from()}],
+    req_start_time :: non_neg_integer() | no_req_start_time,
+    success_count :: integer(),
+    fail_count :: integer(),
+    timer :: reference()
+}).
 
 -define(NO_PENDING_REQUESTS(S), S = #state{pending = []}).
 
@@ -65,12 +71,14 @@ start_link(Path) -> gen_server:start_link(?MODULE, [Path], []).
 %%------------------------------------------------------------------------------
 -spec info(pid()) -> ok.
 info(Pid) when is_pid(Pid) ->
-    #state{port = Port,
-           path = Path,
-           pending = Ps,
-           req_start_time = TStart,
-           success_count = SC,
-           fail_count = FC} =
+    #state{
+        port = Port,
+        path = Path,
+        pending = Ps,
+        req_start_time = TStart,
+        success_count = SC,
+        fail_count = FC
+    } =
         gen_server:call(Pid, info),
     io:format("Directory Guard Statistics:~n"),
     io:format(" * Path:          ~s~n", [Path]),
@@ -78,15 +86,18 @@ info(Pid) when is_pid(Pid) ->
     io:format(" * Failed:        ~w~n", [FC]),
     io:format(" * Pending:       ~w~n", [length(Ps)]),
     case TStart of
-        no_req_start_time -> ok;
+        no_req_start_time ->
+            ok;
         _ ->
             T = now_millis() - TStart,
             io:format(" * Pending Since: ~w~n", [T])
     end,
     io:format(" * Port:          ~s~n", [erlang:port_to_list(Port)]),
     io:format(" * OS_PID:        ~w~n", [extract_port_info(Port, os_pid)]),
-    io:format(" * I/O:           ~w/~wB~n", [extract_port_info(Port, input),
-                                         extract_port_info(Port, output)]),
+    io:format(" * I/O:           ~w/~wB~n", [
+        extract_port_info(Port, input),
+        extract_port_info(Port, output)
+    ]),
     io:format(" * Memory:        ~wB~n", [extract_port_info(Port, memory)]).
 
 %%------------------------------------------------------------------------------
@@ -117,7 +128,7 @@ can_stat(Pid, TimeOutMillis) when is_pid(Pid) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_filetype(pid(), file:filename()) ->
-                          safeio:filetype() | {error, term()}.
+    safeio:filetype() | {error, term()}.
 get_filetype(Pid, RelPathIn) ->
     get_filetype(Pid, RelPathIn, ?CHECK_TIMEOUT_MILLIS).
 
@@ -127,16 +138,18 @@ get_filetype(Pid, RelPathIn) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_filetype(pid(), file:filename(), timeout()) ->
-                          safeio:filetype() | {error, term()}.
+    safeio:filetype() | {error, term()}.
 get_filetype(Pid, RelPathIn, TimeOutMillis) when is_pid(Pid) ->
     case safe_relative_path(RelPathIn) of
         unsafe ->
             {error, {not_a_relative_path, RelPathIn}};
         RelPath ->
             try
-                gen_server:call(Pid,
-                                {{get_filetype, RelPath}, TimeOutMillis},
-                                TimeOutMillis)
+                gen_server:call(
+                    Pid,
+                    {{get_filetype, RelPath}, TimeOutMillis},
+                    TimeOutMillis
+                )
             catch
                 exit:_ -> {error, timeout}
             end
@@ -187,13 +200,15 @@ cast_to_port(P, Term) -> gen_server:cast(P, {cast_to_port, Term}).
 %%------------------------------------------------------------------------------
 init([Path]) ->
     process_flag(trap_exit, true),
-    {ok, #state{port = start_port(),
-                path = Path,
-                pending = [],
-                req_start_time = no_req_start_time,
-                success_count = 0,
-                fail_count = 0,
-                timer = start_check()}}.
+    {ok, #state{
+        port = start_port(),
+        path = Path,
+        pending = [],
+        req_start_time = no_req_start_time,
+        success_count = 0,
+        fail_count = 0,
+        timer = start_check()
+    }}.
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -202,7 +217,7 @@ handle_call(info, _From, State) ->
     {reply, State, State};
 handle_call({Op, TimeOutMillis}, From, State) ->
     case is_blocked_for_too_long(State, TimeOutMillis) of
-        true  -> {reply, {error, timeout}, add_fail_count(1, State)};
+        true -> {reply, {error, timeout}, add_fail_count(1, State)};
         false -> {noreply, enque_and_execute(Op, From, State)}
     end.
 
@@ -224,10 +239,12 @@ handle_info(?event(Payload), State) ->
     {noreply, State};
 handle_info(Return = ?return(_, _), State = #state{}) ->
     {noreply,
-     if_idle_execute_next_pending(
-       handle_port_return(
-         Return,
-         reset_req_start_time(State)))};
+        if_idle_execute_next_pending(
+            handle_port_return(
+                Return,
+                reset_req_start_time(State)
+            )
+        )};
 handle_info(?sedge_leave_readloop, State) ->
     {stop, normal, State};
 handle_info({timeout, Ref, check}, State = #state{timer = Ref}) ->
@@ -237,7 +254,7 @@ handle_info({timeout, Ref, check}, State = #state{timer = Ref}) ->
     %% which kills the corresponding port process and let it get restarted in
     %% the supervisor.
     case is_blocked_for_too_long(State, ?CHECK_ALIVE_INTERVAL) of
-        true  -> {stop, io_blocked, State};
+        true -> {stop, io_blocked, State};
         false -> {noreply, State#state{timer = start_check()}}
     end.
 
@@ -254,7 +271,6 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %%%=============================================================================
 %%% internal functions
 %%%=============================================================================
-
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -311,9 +327,11 @@ if_idle_execute_next_pending(State) ->
     case {State#state.pending, State#state.req_start_time} of
         {[{Op, _} | _], no_req_start_time} ->
             set_req_start_time(
-              cast_to_port_impl(
-                State,
-                op_to_cmd(Op, State)));
+                cast_to_port_impl(
+                    State,
+                    op_to_cmd(Op, State)
+                )
+            );
         _ ->
             State
     end.
@@ -323,82 +341,86 @@ if_idle_execute_next_pending(State) ->
 %%------------------------------------------------------------------------------
 -spec handle_port_return(term(), #state{}) -> #state{}.
 handle_port_return(?return_get_filetype_ok(T), State) ->
-      succeed_pending_get_filetype(filetype_to_atom(T),State);
+    succeed_pending_get_filetype(filetype_to_atom(T), State);
 handle_port_return(?return_get_filetype_error(E), State) ->
-      fail_pending_get_filetype(ioerror_to_atom(E),State);
+    fail_pending_get_filetype(ioerror_to_atom(E), State);
 handle_port_return(?return_can_stat_ok, State) ->
-      succeed_pending_can_stat(State);
+    succeed_pending_can_stat(State);
 handle_port_return(?return_can_stat_error(E), State) ->
-      fail_all(ioerror_to_atom(E),State).
+    fail_all(ioerror_to_atom(E), State).
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
 -spec succeed_pending_can_stat(#state{}) -> #state{}.
-succeed_pending_can_stat(State = #state{ pending = Ps }) ->
+succeed_pending_can_stat(State = #state{pending = Ps}) ->
     {PsNew, Successes} =
-      lists:foldr(
-        fun({Op, From}, {NewPs, Successes}) ->
+        lists:foldr(
+            fun({Op, From}, {NewPs, Successes}) ->
                 case Op of
                     can_stat ->
                         gen_server:reply(From, ok),
                         {NewPs, Successes + 1};
                     _ ->
-                        {[{Op, From}|NewPs], Successes}
+                        {[{Op, From} | NewPs], Successes}
                 end
-        end,
-        {[], 0},
-        Ps),
+            end,
+            {[], 0},
+            Ps
+        ),
     add_success_count(
-      Successes,
-      State#state{pending = PsNew}).
+        Successes,
+        State#state{pending = PsNew}
+    ).
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
 -spec fail_all(term(), #state{}) -> #state{}.
-fail_all(E, State = #state{ pending = Ps }) ->
+fail_all(E, State = #state{pending = Ps}) ->
     lists:map(
-      fun({_,P}) ->
-              gen_server:reply(P, {error, E})
-      end,
-      Ps),
+        fun({_, P}) ->
+            gen_server:reply(P, {error, E})
+        end,
+        Ps
+    ),
     add_fail_count(length(Ps), clear_pending(State)).
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
 -spec succeed_pending_get_filetype(safeio:filetype(), #state{}) -> #state{}.
-succeed_pending_get_filetype(FileType, State = #state{ pending = Ps }) ->
+succeed_pending_get_filetype(FileType, State = #state{pending = Ps}) ->
     {PsNew, Successes} =
         case Ps of
-            [{{get_filetype, _}, From}|Rest] ->
+            [{{get_filetype, _}, From} | Rest] ->
                 gen_server:reply(From, FileType),
                 {Rest, 1};
             _ ->
                 {Ps, 0}
         end,
     add_success_count(
-      Successes,
-      State#state{pending = PsNew}).
+        Successes,
+        State#state{pending = PsNew}
+    ).
 
 %%------------------------------------------------------------------------------
 %% @private
 %%------------------------------------------------------------------------------
 -spec fail_pending_get_filetype(safeio:ioerror(), #state{}) -> #state{}.
-fail_pending_get_filetype(E, State = #state{ pending = Ps }) ->
+fail_pending_get_filetype(E, State = #state{pending = Ps}) ->
     {PsRest, FailCount} =
         case Ps of
-            [{{get_filetype, _}, From}|Rest] ->
+            [{{get_filetype, _}, From} | Rest] ->
                 gen_server:reply(From, {error, E}),
                 {Rest, 1};
             _ ->
                 {Ps, 0}
         end,
     add_fail_count(
-      FailCount,
-      State#state{pending = PsRest}).
-
+        FailCount,
+        State#state{pending = PsRest}
+    ).
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -423,10 +445,12 @@ add_fail_count(N, State = #state{fail_count = C}) ->
 %% @private
 %%------------------------------------------------------------------------------
 handle_port_event(?heart_beat(Sent, Received)) ->
-    io:format("heartbeat event - "
-                 "sent: ~wms, "
-                 "received by port: ~ws, ",
-                 [Sent, Received]).
+    io:format(
+        "heartbeat event - "
+        "sent: ~wms, "
+        "received by port: ~ws, ",
+        [Sent, Received]
+    ).
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -466,7 +490,7 @@ shutdown_loop(Port) ->
         {Port, {data, _Data}} ->
             shutdown_loop(Port)
     after 10000 ->
-            ok
+        ok
     end.
 
 %%------------------------------------------------------------------------------
@@ -475,7 +499,7 @@ shutdown_loop(Port) ->
 extract_port_info(Port, Item) ->
     case erlang:port_info(Port, Item) of
         {Item, Value} -> Value;
-        undefined     -> undefined
+        undefined -> undefined
     end.
 
 %%------------------------------------------------------------------------------
@@ -509,7 +533,7 @@ valgrind() ->
     case os:getenv("SAFEIO_PORT_USE_VALGRIND") of
         V when V == ""; V == "1" ->
             "valgrind --log-file=/tmp/safeio_port.valgrind --leak-check=full"
-                " --show-leak-kinds=all";
+            " --show-leak-kinds=all";
         false ->
             ""
     end.
@@ -555,19 +579,19 @@ safe_relative_path(Path) ->
 %% @private
 %% This function is borrowed from the OTP filename module.
 %%------------------------------------------------------------------------------
-safe_relative_path_1(["." | T], Acc)      -> safe_relative_path_1(T, Acc);
-safe_relative_path_1([<<".">> | T], Acc)  -> safe_relative_path_1(T, Acc);
-safe_relative_path_1([".." | T], Acc)     -> climb(T, Acc);
+safe_relative_path_1(["." | T], Acc) -> safe_relative_path_1(T, Acc);
+safe_relative_path_1([<<".">> | T], Acc) -> safe_relative_path_1(T, Acc);
+safe_relative_path_1([".." | T], Acc) -> climb(T, Acc);
 safe_relative_path_1([<<"..">> | T], Acc) -> climb(T, Acc);
-safe_relative_path_1([H | T], Acc)        -> safe_relative_path_1(T, [H | Acc]);
-safe_relative_path_1([], [])              -> [];
-safe_relative_path_1([], Acc)             -> filename:join(lists:reverse(Acc)).
+safe_relative_path_1([H | T], Acc) -> safe_relative_path_1(T, [H | Acc]);
+safe_relative_path_1([], []) -> [];
+safe_relative_path_1([], Acc) -> filename:join(lists:reverse(Acc)).
 
 %%------------------------------------------------------------------------------
 %% @private
 %% This function is borrowed from the OTP filename module.
 %%------------------------------------------------------------------------------
-climb(_, [])        -> unsafe;
+climb(_, []) -> unsafe;
 climb(T, [_ | Acc]) -> safe_relative_path_1(T, Acc).
 
 %%%% {ok, C2} = safeio_directory_guard:start_link("/mnt/audio"), dbg:tracer(), dbg:p(C2, [p,m]), safeio_directory_guard:heart_beat(C2).
